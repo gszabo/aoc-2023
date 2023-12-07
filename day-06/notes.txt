@@ -1,0 +1,9 @@
+Time:        46     82     84     79
+Distance:   347   1522   1406   1471
+
+x*(T-x) > D
+How many integer solutions are there?
+
+x^2 - Tx + D < 0
+
+x_1,2 = (T +- sqrt(T^2 - 4D)) / 2
