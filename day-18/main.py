@@ -17,6 +17,11 @@ class Directions(Enum):
         dx, dy = self.value
         return (x + dx, y + dy)
 
+    def n_step(self, pos: Coord, n: int) -> Coord:
+        x, y = pos
+        dx, dy = self.value
+        return (x + n * dx, y + n * dy)
+
 
 UP = Directions.UP
 DOWN = Directions.DOWN
@@ -82,7 +87,6 @@ def measure_trench(trench_instructions: list[tuple[Directions, int]]) -> int:
         if DOWN.step(pos) in trench and LEFT.step(pos) in trench:
             trench[pos] = "7"
 
-
     x_coords = [x for x, _ in trench]
     y_coords = [y for _, y in trench]
 
@@ -103,7 +107,6 @@ def measure_trench(trench_instructions: list[tuple[Directions, int]]) -> int:
     #             print(".", end='')
     #     print()
 
-
     # print()
     # print()
 
@@ -121,7 +124,9 @@ def measure_trench(trench_instructions: list[tuple[Directions, int]]) -> int:
                     if not corner:
                         inside = not inside
                 elif char in "J7":
-                    if (corner == "F" and char == "J") or (corner == "L" and char == "7"):
+                    if (corner == "F" and char == "J") or (
+                        corner == "L" and char == "7"
+                    ):
                         inside = not inside
                     corner = None
                 result += 1
@@ -131,21 +136,52 @@ def measure_trench(trench_instructions: list[tuple[Directions, int]]) -> int:
                     result += 1
                     # print("#", end='')
                 # else:
-                    # print(".", end='')
+                # print(".", end='')
         # print()
 
     return result
 
 
+def measure_trench_with_shoelace_formula(
+    trench_instructions: list[tuple[Directions, int]]
+) -> int:
+    start = (0, 0)
+    coordinates = [start]
+
+
+
+    current = start
+    for dir, count in trench_instructions:
+        current = dir.n_step(current, count)
+        coordinates.append(current)
+
+    area = 0
+
+    for i in range(len(coordinates) - 1):
+        x1, y1 = coordinates[i]
+        x2, y2 = coordinates[i + 1]
+
+        area += (y1 + y2) * (x1 - x2)
+
+    area = abs(area)
+
+    for _, count in trench_instructions:
+        area += count
+
+    area += 2 # why????
+
+    return area // 2
+
+
 def part_1():
     puzzle_input = parse_input_part_1("input.txt")
-    return measure_trench(puzzle_input)
-
+    # return measure_trench(puzzle_input)
+    return measure_trench_with_shoelace_formula(puzzle_input)
 
 
 def part_2():
-    puzzle_input = parse_input_part_2("input_sample.txt")
-    return measure_trench(puzzle_input)
+    puzzle_input = parse_input_part_2("input.txt")
+    return measure_trench_with_shoelace_formula(puzzle_input)
 
 
 if __name__ == "__main__":
