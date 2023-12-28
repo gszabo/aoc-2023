@@ -16,6 +16,11 @@ class Brick:
     y2: int
     z2: int
 
+    id: int
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
     def direction(self) -> str:
         if self.x1 != self.x2:
             return "x"
@@ -47,6 +52,9 @@ class Brick:
         )
 
     def coords(self) -> list[Coord]:
+        if self.is_vertical():
+            return [(self.x1, self.y1, z) for z in range(self.z1, self.z2 + 1)]
+
         return [
             (x, y, self.z1)
             for x in range(self.x1, self.x2 + 1)
@@ -77,12 +85,12 @@ def parse_input(filename: str) -> list[Brick]:
 
     bricks = []
 
-    for line in lines:
+    for index, line in enumerate(lines):
         coords1, coords2 = line.split("~")
         x1, y1, z1 = map(int, coords1.split(","))
         x2, y2, z2 = map(int, coords2.split(","))
 
-        bricks.append(Brick(x1, y1, z1, x2, y2, z2))
+        bricks.append(Brick(x1, y1, z1, x2, y2, z2, index))
 
     return bricks
 
@@ -100,42 +108,45 @@ def part_1():
         for coord in brick.coords():
             space[coord] = index
 
-    # pprint(bricks)
-
-    # let everything fall down and settle
-    # print("Starting to move bricks down...")
+    stable_bricks = {brick for brick in bricks if brick.is_on_ground()}
+    # fill up the stable bricks set by finding every brick supported by a stable brick
     while True:
-        move_happened = False
+        expansion_set = set()
 
-        for index, brick in enumerate(bricks):
-            if brick.is_on_ground():
-                # print("Brick", index, "is on ground")
-                continue
+        for brick in stable_bricks:
+            for coord in brick.coords_above():
+                brick_index_above = space[coord]
+                if brick_index_above != -1:
+                    brick_to_add = bricks[brick_index_above]
+                    if brick_to_add not in stable_bricks:
+                        expansion_set.add(bricks[brick_index_above])
 
-            while not brick.is_on_ground() and all(
-                space[coord] == -1 for coord in brick.coords_below()
-            ):
-                for coord in brick.coords():
-                    space[coord] = -1
+        stable_bricks.update(expansion_set)
 
-                # print("Moving brick", index, "down")
-                brick.move_down()
-                # print("New coords:", brick)
-                for coord in brick.coords():
-                    space[coord] = index
-
-                move_happened = True
-
-        if not move_happened:
+        if len(expansion_set) == 0:
             break
 
-    # print("Falling finished")
+    while len(stable_bricks) < len(bricks):
+        lowest_unstable_brick = min(
+            (brick for brick in bricks if brick not in stable_bricks),
+            key=lambda brick: brick.z1,
+        )
+        while not lowest_unstable_brick.is_on_ground() and all(
+            space[coord] == -1 for coord in lowest_unstable_brick.coords_below()
+        ):
+            for coord in lowest_unstable_brick.coords():
+                space[coord] = -1
+
+            lowest_unstable_brick.move_down()
+            for coord in lowest_unstable_brick.coords():
+                space[coord] = lowest_unstable_brick.id
+        stable_bricks.add(lowest_unstable_brick)
+
 
     # find out which brick supports which bricks
     supports = defaultdict(set)
     supported_by = defaultdict(set)
 
-    # pprint(bricks)
 
     for index, brick in enumerate(bricks):
         if brick.is_on_ground():
@@ -163,7 +174,7 @@ def part_1():
             removable.append(index)
 
     # print("Removable:", [to_char(x) for x in removable])
-    return len(set(removable))
+    return len(removable)
 
 
 def part_2():
