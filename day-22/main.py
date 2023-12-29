@@ -99,14 +99,18 @@ def to_char(i: int) -> str:
     return chr(ord("A") + i)
 
 
-def part_1():
-    bricks = parse_input("input.txt")
-
+def create_space(bricks: list[Brick]) -> dict[Coord, int]:
     space = defaultdict(lambda: -1)
 
-    for index, brick in enumerate(bricks):
+    for brick in bricks:
         for coord in brick.coords():
-            space[coord] = index
+            space[coord] = brick.id
+
+    return space
+
+
+def stabilize(bricks: list[Brick], space: dict[Coord, int]):
+    # This function mutates the bricks and space parameters
 
     stable_bricks = {brick for brick in bricks if brick.is_on_ground()}
     # fill up the stable bricks set by finding every brick supported by a stable brick
@@ -143,10 +147,11 @@ def part_1():
         stable_bricks.add(lowest_unstable_brick)
 
 
-    # find out which brick supports which bricks
+def find_support_relations(
+    bricks: list[Brick], space: dict[Coord, int]
+) -> tuple[dict, dict]:
     supports = defaultdict(set)
     supported_by = defaultdict(set)
-
 
     for index, brick in enumerate(bricks):
         if brick.is_on_ground():
@@ -159,6 +164,17 @@ def part_1():
             if brick_index_below != -1:
                 supports[brick_index_below].add(index)
                 supported_by[index].add(brick_index_below)
+
+    return supports, supported_by
+
+
+def part_1():
+    bricks = parse_input("input.txt")
+    space = create_space(bricks)
+
+    stabilize(bricks, space)
+
+    supports, supported_by = find_support_relations(bricks, space)
 
     removable = []
 
@@ -173,7 +189,6 @@ def part_1():
         if is_index_removable:
             removable.append(index)
 
-    # print("Removable:", [to_char(x) for x in removable])
     return len(removable)
 
 
