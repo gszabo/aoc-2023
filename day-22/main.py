@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 from pprint import pprint
@@ -193,9 +193,34 @@ def part_1():
 
 
 def part_2():
-    pass
+    bricks = parse_input("input.txt")
+    space = create_space(bricks)
+
+    stabilize(bricks, space)
+
+    supports, supported_by = find_support_relations(bricks, space)
+
+    def fall_count(brick_id: int) -> int:
+        falling_set = {brick_id}
+
+        # BFS. add a new brick to the queue if the current falling set removes all stable support from it
+
+        queue = deque([brick_id])
+        while len(queue) > 0:
+            brick_index = queue.popleft()
+
+            for supported_index in supports[brick_index]:
+                remaining_support = supported_by[supported_index] - falling_set
+                if len(remaining_support) == 0:
+                    falling_set.add(supported_index)
+                    queue.append(supported_index)
+
+        # subtract 1 because the starting brick is not counted, it only counts how many other bricks fall
+        return len(falling_set) - 1
+
+    return sum(fall_count(brick.id) for brick in bricks)
 
 
 if __name__ == "__main__":
-    print("Part 1:", part_1())
+    # print("Part 1:", part_1())
     print("Part 2:", part_2())
