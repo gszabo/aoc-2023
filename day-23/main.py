@@ -1,4 +1,4 @@
-from collections import deque
+from collections import defaultdict, deque
 from pathlib import Path
 
 Coord = tuple[int, int]
@@ -105,7 +105,9 @@ def part_1():
         neighbors = get_neighbors(current, path)
         # print("Neighbors of", current, "are", neighbors)
         for neighbor in neighbors:
-            segment_end, extended_path = walk_until_possible(neighbor, path | {neighbor})
+            segment_end, extended_path = walk_until_possible(
+                neighbor, path | {neighbor}
+            )
             # print("Appending", segment_end, extended_path)
             queue.append((segment_end, extended_path))
 
@@ -116,7 +118,108 @@ def part_1():
 
 
 def part_2():
-    pass
+    data = parse_input("input.txt")
+
+    field = data["field"]
+    start = data["start"]
+    end = data["end"]
+
+    # replace every slope with a normal field
+    for coord, value in field.items():
+        if value in ">vV<^":
+            field[coord] = "."
+
+    def get_neighbors(coord: Coord) -> list[Coord]:
+        result = []
+
+        for vector in STEP_VECTORS:
+            possible = (coord[0] + vector[0], coord[1] + vector[1])
+            if field.get(possible) == ".":
+                result.append(possible)
+
+        return result
+
+    junctions = [
+        start,
+        *(
+            coord
+            for coord, value in field.items()
+            if value == "." and len(get_neighbors(coord)) > 2
+        ),
+        end,
+    ]
+
+    # print(len(junctions))
+
+    edges = defaultdict(set)
+
+    # BFS on the grid to find edges between junctions
+    for coord in junctions:
+        visited = set()
+        queue = deque([(coord, 0)])
+        while len(queue) > 0:
+            current, distance = queue.popleft()
+
+            visited.add(current)
+
+            for neighbor in get_neighbors(current):
+                if neighbor in junctions and neighbor != coord:
+                    edges[coord].add((neighbor, distance + 1))
+                elif neighbor not in visited:
+                    queue.append((neighbor, distance + 1))
+
+    def dfs(from_vertex: tuple, goal: tuple, seen: set=set()) -> list:
+        """ Recursive DFS to find all path lengths from from_vertex to goal.
+
+        Args:
+            grid (_type_): _description_
+            edges (dict[tuple, set]): Adjacency dictionary mapping vertex to a set of (vertex, distance)
+            from_vertex (tuple): The current vertex
+            goal (tuple): The final vertex we want to reach
+            seen (set, optional): To track visisted vertices. First call will set it to empty.
+
+        Returns:
+            list: lengths of all valid paths
+        """
+        if from_vertex == goal:
+            return [0] # Found a path, return a list with length 0 (since no more distance is needed)
+
+        seen.add(from_vertex) # tp prevent backtracking in THIS path
+        path_lengths = []
+
+        # explore each connected vertex
+        for next_vertex, distance in edges[from_vertex]:
+            if next_vertex not in seen: # prevent backtracking for this path
+                # recursively call from the next vertex onwards
+                for path_len in dfs(next_vertex, goal, seen):
+                    path_lengths.append(path_len + distance) # adjust each length by adding the current dist
+
+        seen.remove(from_vertex) # to allow other paths to visit this vertex
+
+        return path_lengths
+
+    # use recursive function from reddit, faster than my version by 10 seconds (20 vs 30)
+    return max(dfs(start, end))
+
+    # DFS to find the longest path, Gabor version
+    # path_till_end = []
+
+    # queue = deque([(start, {start}, 0)])
+    # while len(queue) > 0:
+    #     current, path, length = queue.pop()
+
+    #     if current == end:
+    #         # print(length, len(path))
+    #         path_till_end.append((path, length))
+    #         continue
+
+    #     neighbors = edges[current]
+    #     for neighbor, distance in neighbors:
+    #         if neighbor not in path:
+    #             queue.append((neighbor, path | {neighbor}, length + distance))
+
+    # return max(length for _, length in path_till_end)
+
 
 
 if __name__ == "__main__":
