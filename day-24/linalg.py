@@ -33,6 +33,12 @@ def solve_4x4(m: list[list[T]], b: list[T]) -> list[T]:
     assert len(m[3]) == 4
     assert len(b) == 4
 
+    def debug_print():
+        for i in range(4):
+            print(m[i][0], m[i][1], m[i][2], m[i][3], sep=" ", end=" | ")
+            print(b[i])
+        print()
+
     # Gaussian elimination
     # https://en.wikipedia.org/wiki/Gaussian_elimination
 
@@ -40,12 +46,16 @@ def solve_4x4(m: list[list[T]], b: list[T]) -> list[T]:
     # TODO: Understand how and why this works
 
     # Forward elimination
+    # debug_print()
     for i in range(3):
         for j in range(i + 1, 4):
             m[j][i] = m[j][i] / m[i][i]
+            # debug_print()
             for k in range(i + 1, 4):
                 m[j][k] = m[j][k] - m[j][i] * m[i][k]
+                # debug_print()
             b[j] = b[j] - m[j][i] * b[i]
+            # debug_print()
 
     # Back substitution
     x = [0, 0, 0, 0]

@@ -157,6 +157,20 @@ def part_2():
     return px + py + pz
 
 
+def sandbox():
+    # this was used to try to understand the inner workings of the AI-generated Gaussian elimination code
+    # at the time of writing the code does not do what I expect it to do, but it works
+    m = [
+        [2, 1, 6, 1],
+        [3, 0, 12, -1],
+        [3, 1, 18, 7],
+        [6, 3, 6, -1],
+    ]
+    b = [44, 35, 38, 164]
+    print(solve_4x4(m, b))
+
+
 if __name__ == "__main__":
     print("Part 1:", part_1())
     print("Part 2:", part_2())
+    # sandbox()
