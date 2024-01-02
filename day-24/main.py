@@ -1,10 +1,10 @@
-from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 
-from linalg import solve_2x2
+from linalg import solve_2x2, solve_4x4
 
 
-Vector = tuple[Decimal, Decimal, Decimal]
+Vector = tuple[Fraction, Fraction, Fraction]
 
 
 def parse_input(filename: str) -> list[tuple[Vector, Vector]]:
@@ -14,8 +14,12 @@ def parse_input(filename: str) -> list[tuple[Vector, Vector]]:
 
     for line in lines:
         ps, vs = line.split(" @ ")
-        p = tuple(map(Decimal, ps.split(",")))
-        v = tuple(map(Decimal, vs.split(",")))
+        # Using Fraction to arrive at exact integer results.
+        # Using ints result in wrong answer, because of the divisions resulting in floats during the Gauss elimination in part 2.
+        # Using Decimal gets very close to the correct integer result (a basic rounding is enough to get the correct answer),
+        # but it's still not exact. I don't know why.
+        p = tuple(map(Fraction, ps.split(",")))
+        v = tuple(map(Fraction, vs.split(",")))
         result.append((p, v))
 
     return result
@@ -82,7 +86,75 @@ def part_1():
 
 
 def part_2():
-    pass
+    # Rock's initial position: (px, py, pz)
+    # Rock's initial velocity: (vx, vy, vz)
+
+    # First 5 rows are enough to set up the equation system.
+    # As a first step, we need to create a system of 4 linear equations for the x, y variables: px, py, vx, vy
+    # Let t1, t2, t3, ... denote the time when the first, second, third, ... hailstone is hit by the rock.
+    #
+    # At these times, the rock is at the same position as the hailstone, so we can write the following equations for the first hailstone:
+    #   ( I)  px + vx * t1 = p1x + v1x * t1
+    #   (II)  py + vy * t1 = p1y + v1y * t1
+    #
+    # Generally for the ith hailstone:
+    #   (2i-1)  px + vx * ti = pi_x + vi_x * ti
+    #   (2i)    py + vy * ti = pi_y + vi_y * ti
+    #
+    # So far all the ti variables are unknown, and the system is not linear, but we can rearrange the equations to get a linear system.
+    #
+    # Rearranging (2i-1) and (2i) for ti:
+    #   ti = (pi_x - px) / (vx - vi_x) = (pi_y - py) / (vy - vi_y)
+    #
+    # Rearranging to get rid of divisions:
+    #  (i) vi_y * px - vi_x * py + py * vx - px * vy - pi_y * vx + pi_x * vy = pi_x * vi_y - pi_y * vi_x
+    #
+    # On the left hand side this still contains a non-linear term (py * vx - px * vy), but it is the same term for all i = 1, 2, 3, ...
+    #
+    # We can create a new equation system by eg. subtracting (2), (3), (4), ... from (1), ie. (1) - (i), i = 2, 3, 4, ...
+    #  (i-1) (v1_y - vi_y) * px + (vi_x - v1_x) * py + (pi_y - p1_y) * vx - (p1_x - pi_x) * vy = p1_x * v1_y - p1_y * v1_x - pi_x * vi_y + pi_y * vi_x
+    #
+    # So by grabbing the first 5 hailstones from the input data, writing the equations by eliminating ti and then doing the
+    # above substractions ((1) - (i), for i = 2, 3, 4, 5), we get a system of 4 linear equations for the 4 unknowns: px, py, vx, vy.
+    # We can solve this system using Gaussian elimination and get the values for px, py, vx, vy.
+
+    data = parse_input("input.txt")
+
+    m = []
+    b = []
+
+    p1x, p1y, p1z, v1x, v1y, v1z = [*data[0][0], *data[0][1]]
+    p2x, _, p2z, v2x, _, v2z = [*data[1][0], *data[1][1]]
+
+    for i in range(1, 5):
+        pix, piy, _, vix, viy, _ = [*data[i][0], *data[i][1]]
+        m.append([v1y - viy, vix - v1x, piy - p1y, p1x - pix])
+        b.append(p1x * v1y - p1y * v1x - pix * viy + piy * vix)
+
+    px, py, vx, vy = solve_4x4(m, b)
+
+    # Now that we have all variables for x and y coordinates,
+    # we can use the first two hailstones to calculate the z variables:
+    #   ( I)  pz + vz * t1 = p1z + v1z * t1
+    #   (II)  pz + vz * t2 = p2z + v2z * t2
+    # t1 and t2 are known values based on the solution above:
+    #   t1 = (p1x - px) / (vx - v1x)
+    #   t2 = (p2x - px) / (vx - v2x)
+    # So we need to solve a system of two linear equations of two variables.
+
+    t1 = (p1x - px) / (vx - v1x)
+    t2 = (p2x - px) / (vx - v2x)
+
+    pz, vz = solve_2x2(
+        [
+            [1, t1],
+            [1, t2],
+        ],
+        [p1z + v1z * t1, p2z + v2z * t2],
+    )
+
+    print(px, py, pz, vx, vy, vz)
+    return px + py + pz
 
 
 if __name__ == "__main__":
